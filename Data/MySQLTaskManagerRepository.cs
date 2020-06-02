@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 using TaskManager.Models;
 
 namespace TaskManager.Data
@@ -14,17 +16,18 @@ namespace TaskManager.Data
             _context = context;
         }
 
-        public void CreateTask(Task task)
+        public async Task<UserTask> CreateTask(UserTask task)
         {
             if (task == null)
             {
                 throw new ArgumentNullException(nameof(task));
             }
 
-            _context.Tasks.Add(task);
+            await _context.UserTasks.AddAsync(task);
+            return task;
         }
 
-        public void CreateUser(User user)
+        public async Task<User> CreateUser(User user)
         {
             if (user == null)
             {
@@ -35,62 +38,73 @@ namespace TaskManager.Data
                 throw new Exception("Email alredy exists!");
             }
 
-            _context.Users.Add(user);
+            await _context.Users.AddAsync(user);
+            return user;
         }
 
-        public void DeleteTask(Task task)
+        public async Task<bool> DeleteTask(UserTask task)
         {
             if (task == null)
             {
                 throw new ArgumentNullException(nameof(task));
             }
-            task.deleted = true;
-
+             task.deleted = true;
+             _context.UserTasks.Update(task);
+             await _context.SaveChangesAsync();
+             return true;
         }
 
-        public Task GetTaskById(int id)
+        public async Task<UserTask> GetTaskById(int id)
         {
-            return _context.Tasks.FirstOrDefault(p => p.id == id && p.deleted == false);
+            return await _context.UserTasks.FirstOrDefaultAsync(p => p.id == id && p.deleted == false);
         }
 
-        public User GetUserByEmail(string email)
+        public async Task<User> GetUserByEmail(string email)
         {
-            return _context.Users.FirstOrDefault(p => p.email.Equals(email));
+            return await _context.Users.FirstOrDefaultAsync(p => p.email.Equals(email));
         }
 
-        public IEnumerable<Task> GetUserTasks(int userId)
+        public async Task<IEnumerable<UserTask>> GetUserTasks(int userId)
         {
-            return _context.Tasks.Where(t => t.userId == userId && t.deleted == false).ToList();
+            return await _context.UserTasks.Where(t => t.userId == userId && t.deleted == false).ToListAsync();
         }
 
-        public bool SaveChanges()
+        public async Task<bool> SaveChanges()
         {
-            return (_context.SaveChanges() >= 0);
+            return await _context.SaveChangesAsync() >= 0;
         }
 
-        public void UpdateTask(Task task)
+       public async Task<UserTask> UpdateTask(UserTask task)
         {
-            //don't need to define or implement Update method 
-            //because AutoMapper and Entity Framework update changes after calling SaveChanges()
+            _context.UserTasks.Update(task);
+            await _context.SaveChangesAsync();
+            return  task;
         }
-
-        public bool ValidateToken(string tokenString)
+ 
+        public async Task<bool> ValidateToken(string tokenString)
         {
-            return _context.InvalidTokens.FirstOrDefault(p => p.token.Equals(tokenString)) == null;
+             var token = await _context.InvalidTokens.FirstOrDefaultAsync(p => p.token.Equals(tokenString)) ;
+             return token == null;
         }
 
-        public void CreateInvalidToken(InvalidToken invalidToken)
+        public async Task<InvalidToken> CreateInvalidToken(InvalidToken invalidToken)
         {
             if (invalidToken == null)
             {
                 throw new ArgumentNullException(nameof(invalidToken));
             }
-            _context.InvalidTokens.Add(invalidToken);
+            await _context.InvalidTokens.AddAsync(invalidToken);
+            return invalidToken;
         }
 
-        public bool IsAdvancedUser(int id)
+        public async Task<bool> IsAdvancedUser(int id)
         {
-            return _context.Users.FirstOrDefault(p => p.id == id).isAdvancedUser;
+             User user = await _context.Users.FirstOrDefaultAsync(p => p.id == id);
+             return user.isAdvancedUser;
         }
+
+
+
+       
     }
 }

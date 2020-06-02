@@ -4,6 +4,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Security.Claims;
 using System.Text;
+using System.Threading.Tasks;
 using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -33,11 +34,11 @@ namespace TaskManager.Controllers
 
         //POST api/login
         [HttpPost("login")]
-        public ActionResult<UserReadDTO> Login(UserLoginDTO userLoginDTO)
+        public async Task<ActionResult<UserReadDTO>> Login(UserLoginDTO userLoginDTO)
         {
             try
             {
-                UserReadDTO authenticatedUser = AuthenticateUser(userLoginDTO);
+                UserReadDTO authenticatedUser = await AuthenticateUser(userLoginDTO);
                 if (authenticatedUser != null)
                 {
                     var tokenString = GenerateJSONWebToken(authenticatedUser);
@@ -55,12 +56,12 @@ namespace TaskManager.Controllers
         //Get api/logout
         [HttpGet("logout")]
         [Authorize]
-        public ActionResult Logout()
+        public async Task<ActionResult> Logout()
         {
             try
             {
                 string token = HttpContext.Request.Headers["authorization"].Single().Split(" ")[1];
-                if (!_repository.ValidateToken(token)) { return Unauthorized(); }
+                if (! (await _repository.ValidateToken(token))) { return Unauthorized(); }
 
                 InvalidToken invalidToken = new InvalidToken();
                 var identity = HttpContext.User.Identity as ClaimsIdentity;
@@ -71,10 +72,10 @@ namespace TaskManager.Controllers
 
                 invalidToken.userId = Int32.Parse(claim[0].Value);
                 invalidToken.expirationDate = expirationDate;
-                invalidToken.token = HttpContext.Request.Headers["authorization"].Single().Split(" ")[1];
+                invalidToken.token = token;
 
-                _repository.CreateInvalidToken(invalidToken);
-                _repository.SaveChanges();
+                await _repository.CreateInvalidToken(invalidToken);
+                await _repository.SaveChanges();
 
                 return Ok();
             }
@@ -85,10 +86,10 @@ namespace TaskManager.Controllers
 
         }
 
-        private UserReadDTO AuthenticateUser(UserLoginDTO userLoginDTO)
+        private async Task<UserReadDTO> AuthenticateUser(UserLoginDTO userLoginDTO)
         {
             UserReadDTO userReadDTO = null;
-            var userFromDB = _repository.GetUserByEmail(userLoginDTO.email);
+            var userFromDB = await _repository.GetUserByEmail(userLoginDTO.email);
             if (userFromDB != null && BCrypt.Net.BCrypt.Verify(userLoginDTO.password, userFromDB.password))
             {
                 userReadDTO = _mapper.Map<UserReadDTO>(userFromDB);

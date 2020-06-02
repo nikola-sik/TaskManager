@@ -5,7 +5,7 @@ using TaskManager.Models;
 
 namespace TaskManager.DTOs
 {
-    public class TaskCreateDTO
+    public class UserTaskCreateDTO
     {
 
         [Required]

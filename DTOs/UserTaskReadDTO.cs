@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace TaskManager.DTOs
 {
-    public class TaskReadDTO
+    public class UserTaskReadDTO
     {
         public int id { get; set; }
 

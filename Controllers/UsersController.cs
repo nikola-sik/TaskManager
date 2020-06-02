@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using AutoMapper;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -22,16 +23,16 @@ namespace TaskManager.Controllers
 
         //POST api/users
         [HttpPost(Name = "CreateUser")]
-        public ActionResult<UserReadDTO> CreateUser(UserCreateDTO userCreateDTO)
+        public async Task<ActionResult<UserReadDTO>> CreateUser(UserCreateDTO userCreateDTO)
         {
             try
             {
-                var hashedPassword = BCrypt.Net.BCrypt.HashPassword(userCreateDTO.password, 10);
+                var hashedPassword =  BCrypt.Net.BCrypt.HashPassword(userCreateDTO.password, 10);
                 userCreateDTO.password = hashedPassword;
                 var userModel = _mapper.Map<User>(userCreateDTO);
                 try
                 {
-                    _repository.CreateUser(userModel);
+                   await _repository.CreateUser(userModel);
                 }
                 catch (Exception e)
                 {
@@ -41,7 +42,7 @@ namespace TaskManager.Controllers
                     }
                     throw e;
                 }
-                _repository.SaveChanges();
+                await _repository.SaveChanges();
 
                 var userReadDTO = _mapper.Map<UserReadDTO>(userModel);
                 return CreatedAtRoute(nameof(CreateUser), userReadDTO);

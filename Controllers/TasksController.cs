@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
+using System.Threading.Tasks;
 using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -29,17 +30,17 @@ namespace TaskManager.Controllers
         //GET api/tasks
         [HttpGet]
         [Authorize]
-        public ActionResult<IEnumerable<TaskReadDTO>> GettUserTasks()
+        public async Task<ActionResult<IEnumerable<UserTaskReadDTO>>> GettUserTasks()
         {
             try
             {
                 string token = HttpContext.Request.Headers["authorization"].Single().Split(" ")[1];
-                if (!_repository.ValidateToken(token)) { return Unauthorized(); }
+                if (! await _repository.ValidateToken(token)) { return Unauthorized(); }
 
                 int loggedUserId = Int32.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
 
-                var taskItems = _repository.GetUserTasks(loggedUserId);
-                return Ok(_mapper.Map<IEnumerable<TaskReadDTO>>(taskItems));
+                var taskItems = await _repository.GetUserTasks(loggedUserId);
+                return Ok(_mapper.Map<IEnumerable<UserTaskReadDTO>>(taskItems));
             }
             catch (Exception)
             {
@@ -50,19 +51,19 @@ namespace TaskManager.Controllers
         //GET api/tasks/{id}
         [HttpGet("{id}", Name = "GetTaskById")]
         [Authorize]
-        public ActionResult<TaskReadDTO> GetTaskById(int id)
+        public async Task<ActionResult<UserTaskReadDTO>> GetTaskById(int id)
         {
             try
             {
                 string token = HttpContext.Request.Headers["authorization"].Single().Split(" ")[1];
-                if (!_repository.ValidateToken(token)) { return Unauthorized(); }
+                if (! await _repository.ValidateToken(token)) { return Unauthorized(); }
 
-                var taskItem = _repository.GetTaskById(id);
+                var taskItem = await _repository.GetTaskById(id);
                 if (taskItem != null)
                 {
                     int loggedUserId = Int32.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
                     if (taskItem.userId == loggedUserId)
-                        return Ok(_mapper.Map<TaskReadDTO>(taskItem));
+                        return Ok(_mapper.Map<UserTaskReadDTO>(taskItem));
                     else
                         return Unauthorized();
                 }
@@ -77,23 +78,23 @@ namespace TaskManager.Controllers
         //POST api/tasks
         [HttpPost]
         [Authorize]
-        public ActionResult<TaskReadDTO> CreateTask(TaskCreateDTO taskCreateDTO)
+        public async Task<ActionResult<UserTaskReadDTO>> CreateTask(UserTaskCreateDTO taskCreateDTO)
         {
             try
             {
                 string token = HttpContext.Request.Headers["authorization"].Single().Split(" ")[1];
-                if (!_repository.ValidateToken(token)) { return Unauthorized(); }
+                if (! await _repository.ValidateToken(token)) { return Unauthorized(); }
 
                 string loggedUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
                 taskCreateDTO.userId = Int32.Parse(loggedUserId);
                 
-                if (!_repository.IsAdvancedUser(taskCreateDTO.userId)) taskCreateDTO.text = null;
+                if (! await _repository.IsAdvancedUser(taskCreateDTO.userId)) taskCreateDTO.text = null;
 
-                var taskModel = _mapper.Map<Task>(taskCreateDTO);
-                _repository.CreateTask(taskModel);
-                _repository.SaveChanges();
+                var taskModel = _mapper.Map<UserTask>(taskCreateDTO);
+                await _repository.CreateTask(taskModel);
+                await _repository.SaveChanges();
 
-                var taskReadDTO = _mapper.Map<TaskReadDTO>(taskModel);
+                var taskReadDTO = _mapper.Map<UserTaskReadDTO>(taskModel);
 
                 return CreatedAtRoute(nameof(GetTaskById), new { id = taskReadDTO.id }, taskReadDTO);
             }
@@ -106,14 +107,14 @@ namespace TaskManager.Controllers
         //PUT api/task/{id}
         [HttpPut("{id}")]
         [Authorize]
-        public ActionResult UpdateTask(int id, TaskUpdateDTO taskUpdateDTO)
+        public async Task<ActionResult> UpdateTask(int id, UserTaskUpdateDTO taskUpdateDTO)
         {
             try
             {
                 string token = HttpContext.Request.Headers["authorization"].Single().Split(" ")[1];
-                if (!_repository.ValidateToken(token)) { return Unauthorized(); }
+                if (! await _repository.ValidateToken(token)) { return Unauthorized(); }
 
-                var taskModelFromRepository = _repository.GetTaskById(id);
+                var taskModelFromRepository = await _repository.GetTaskById(id);
                 if (taskModelFromRepository == null)
                 {
                     return NotFound();
@@ -124,14 +125,13 @@ namespace TaskManager.Controllers
                     return Unauthorized();
                 }
 
-                if (!_repository.IsAdvancedUser(loggedUserId)) taskUpdateDTO.text = null;
+                if (! await _repository.IsAdvancedUser(loggedUserId)) taskUpdateDTO.text = null;
 
                 _mapper.Map(taskUpdateDTO, taskModelFromRepository);
 
-                _repository.UpdateTask(taskModelFromRepository);
-                _repository.SaveChanges();
+                await _repository.UpdateTask(taskModelFromRepository);
 
-                return NoContent();
+                return Ok(_mapper.Map<UserTaskReadDTO>(taskModelFromRepository));
             }
             catch (Exception)
             {
@@ -142,16 +142,16 @@ namespace TaskManager.Controllers
         //PATCH api/tasks/{id}
         [HttpPatch("{id}")]
         [Authorize]
-        public ActionResult PartialTaskUpdate(int id, JsonPatchDocument<TaskUpdateDTO> patchDocument)
+        public async Task<ActionResult> PartialUserTaskUpdate(int id, JsonPatchDocument<UserTaskUpdateDTO> patchDocument)
         {
             try
             {
                 string token = HttpContext.Request.Headers["authorization"].Single().Split(" ")[1];
-                if (!_repository.ValidateToken(token))
+                if (! await _repository.ValidateToken(token))
                 {
                     return Unauthorized();
                 }
-                var taskModelFromRepository = _repository.GetTaskById(id);
+                var taskModelFromRepository = await _repository.GetTaskById(id);
                 if (taskModelFromRepository == null)
                 {
                     return NotFound();
@@ -161,7 +161,7 @@ namespace TaskManager.Controllers
                 {
                     return Unauthorized();
                 }
-                var taskToPatch = _mapper.Map<TaskUpdateDTO>(taskModelFromRepository);
+                var taskToPatch = _mapper.Map<UserTaskUpdateDTO>(taskModelFromRepository);
                 patchDocument.ApplyTo(taskToPatch, ModelState);
 
                 if (!TryValidateModel(taskToPatch))
@@ -169,13 +169,13 @@ namespace TaskManager.Controllers
                     return ValidationProblem(ModelState);
                 }
 
-                if (!_repository.IsAdvancedUser(loggedUserId)) taskToPatch.text = null;
+                if (! await _repository.IsAdvancedUser(loggedUserId)) taskToPatch.text = null;
                 _mapper.Map(taskToPatch, taskModelFromRepository);
 
-                _repository.UpdateTask(taskModelFromRepository);
-                _repository.SaveChanges();
+                await _repository.UpdateTask(taskModelFromRepository);
 
-                return NoContent();
+                return Ok(_mapper.Map<UserTaskReadDTO>(taskModelFromRepository));
+
             }
             catch (Exception)
             {
@@ -186,14 +186,14 @@ namespace TaskManager.Controllers
         //DELETE api/tasks/{id}
         [HttpDelete("{id}")]
         [Authorize]
-        public ActionResult Delete(int id)
+        public async Task<ActionResult> Delete(int id)
         {
             try
             {
                 string token = HttpContext.Request.Headers["authorization"].Single().Split(" ")[1];
-                if (!_repository.ValidateToken(token)) { return Unauthorized(); }
+                if (! await _repository.ValidateToken(token)) { return Unauthorized(); }
 
-                var taskModelFromRepository = _repository.GetTaskById(id);
+                var taskModelFromRepository = await _repository.GetTaskById(id);
                 if (taskModelFromRepository == null)
                 {
                     return NotFound();
@@ -203,8 +203,7 @@ namespace TaskManager.Controllers
                 {
                     return Unauthorized();
                 }
-                _repository.DeleteTask(taskModelFromRepository);
-                _repository.SaveChanges();
+                await _repository.DeleteTask(taskModelFromRepository);
 
                 return NoContent();
             }

@@ -1,31 +1,32 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using TaskManager.Models;
 
 namespace TaskManager.Data
 {
     public interface ITaskManagerRepository
     {
-        bool SaveChanges();
+        Task<bool> SaveChanges();
 
-        IEnumerable<Task> GetUserTasks(int userId);
+        Task<IEnumerable<UserTask>> GetUserTasks(int userId);
 
-        Task GetTaskById (int id);
+        Task<UserTask> GetTaskById (int id);
         
-        void CreateTask(Task task);
+        Task<UserTask> CreateTask(UserTask userTask);
 
-        void UpdateTask(Task task);
+        Task<UserTask> UpdateTask(UserTask userTask);
 
-        void DeleteTask(Task task);
+        Task<bool> DeleteTask(UserTask userTask);
 
-        void CreateUser(User user);
+        Task<User> CreateUser(User user);
 
-        User GetUserByEmail (string email);
+        Task<User> GetUserByEmail (string email);
 
-        bool ValidateToken (string tokenString);
+        Task<bool> ValidateToken (string tokenString);
 
-        void CreateInvalidToken (InvalidToken invalidToken);
+        Task<InvalidToken> CreateInvalidToken (InvalidToken invalidToken);
 
-        bool IsAdvancedUser(int id);
+        Task<bool> IsAdvancedUser(int id);
     }
 }
