@@ -33,7 +33,7 @@ namespace TaskManager.Data
             {
                 throw new ArgumentNullException(nameof(user));
             }
-            if (_context.Users.FirstOrDefault(p => p.email == user.email) != null)
+            if ( await _context.Users.FirstOrDefaultAsync(p => p.email == user.email) != null)
             {
                 throw new Exception("Email alredy exists!");
             }
