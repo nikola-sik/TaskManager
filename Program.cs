@@ -20,7 +20,10 @@ namespace TaskManager
             Host.CreateDefaultBuilder(args)
                 .ConfigureWebHostDefaults(webBuilder =>
                 {
+
                     webBuilder.UseStartup<Startup>();
+                    
+                    
                 });
     }
 }
